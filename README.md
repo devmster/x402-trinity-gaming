@@ -97,6 +97,19 @@ you configure it with and for the limits you set. `nonceStore` must be durable â
 replay guard forgets every settled payment on restart, which means selling the same item twice
 for free.
 
+## Building from source
+
+```bash
+git clone https://github.com/devmster/402-trinity-gaming.git
+cd 402-trinity-gaming
+npm install
+node tools/build.mjs
+```
+
+`npm install` first â€” the bundler is a dev dependency, and without it the build stops at
+`ERR_MODULE_NOT_FOUND`. The build verifies itself and prints `BUILD VERIFIED`; the `dist/`
+it produces is byte-identical to the published package.
+
 ## License
 
 Business Source License 1.1. Source-available; converts to MIT on 2029-08-25. See
