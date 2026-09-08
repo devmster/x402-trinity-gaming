@@ -1,6 +1,6 @@
 # x402-trinity-gaming
 
-**A payment backend for game storefronts that your players never see.**
+**A headless payment utility for the gaming economy.**
 
 No UI. No overlay. No browser handoff. No console output. Your button, your art, your unlock
 animation — this handles the money and gets out of the way.
