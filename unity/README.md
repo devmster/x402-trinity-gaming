@@ -8,7 +8,7 @@ unlock animation.
 Package Manager → **Add package from git URL**:
 
 ```
-https://github.com/devmster/402-trinity-gaming.git?path=/unity
+https://github.com/devmster/x402-trinity-gaming.git?path=/unity
 ```
 
 ## Use

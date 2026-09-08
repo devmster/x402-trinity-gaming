@@ -1,4 +1,4 @@
-# 402-trinity-gaming
+# x402-trinity-gaming
 
 **A payment backend for game storefronts that your players never see.**
 
@@ -6,7 +6,7 @@ No UI. No overlay. No browser handoff. No console output. Your button, your art,
 animation — this handles the money and gets out of the way.
 
 ```bash
-npm install 402-trinity-gaming
+npm install x402-trinity-gaming
 ```
 
 ## How it fits
@@ -25,7 +25,7 @@ either. (Tabs are the exception - see `INTEGRATION.md`.)
 ## Use
 
 ```js
-import { createStorefront } from '402-trinity-gaming/storefront';
+import { createStorefront } from 'x402-trinity-gaming/storefront';
 
 const store = createStorefront({
   payTo: '0xYourStudioWallet',
@@ -100,8 +100,8 @@ for free.
 ## Building from source
 
 ```bash
-git clone https://github.com/devmster/402-trinity-gaming.git
-cd 402-trinity-gaming
+git clone https://github.com/devmster/x402-trinity-gaming.git
+cd x402-trinity-gaming
 npm install
 node tools/build.mjs
 ```

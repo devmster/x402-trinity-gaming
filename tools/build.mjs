@@ -24,7 +24,7 @@ const dist = new URL('dist/', ROOT);
 if (existsSync(dist)) rmSync(dist, { recursive: true });
 mkdirSync(dist, { recursive: true });
 
-console.log('\nbuilding 402-trinity-gaming\n' + '-'.repeat(64));
+console.log('\nbuilding x402-trinity-gaming\n' + '-'.repeat(64));
 
 const rows = [];
 for (const name of ENTRIES) {

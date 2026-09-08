@@ -1,4 +1,4 @@
-# ⚡ 402-Trinity-Gaming — Integration Brief
+# ⚡ x402-Trinity-Gaming — Integration Brief
 
 **A white-label microtransaction engine for game storefronts. The player holds their own wallet.**
 
@@ -13,7 +13,7 @@ art, your unlock animation.
 **Install** into your existing game backend:
 
 ```bash
-npm install 402-trinity-gaming
+npm install x402-trinity-gaming
 ```
 
 **Configure** your catalog and your treasury:
@@ -134,7 +134,7 @@ process — they paid for something your server no longer remembers. Use the fil
 single instance, or your own database adapter for more than one:
 
 ```js
-import { createFileLedgerStore } from '402-trinity-gaming/budget-file';
+import { createFileLedgerStore } from 'x402-trinity-gaming/budget-file';
 const ledger = createFileLedgerStore('./tabs.json');
 ```
 

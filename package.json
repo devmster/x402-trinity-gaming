@@ -1,5 +1,5 @@
 {
-  "name": "402-trinity-gaming",
+  "name": "x402-trinity-gaming",
   "version": "0.1.1",
   "description": "Headless x402 payment backend for game storefronts. No UI, no overlay, no console output - a call in, an event out.",
   "license": "BUSL-1.1",
