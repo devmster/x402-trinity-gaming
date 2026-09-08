@@ -1,0 +1,21 @@
+node_modules/
+dist/
+*.tgz
+
+# Dev harnesses that spend real money and read keys from ~/.x402-secrets.
+# These must never reach a public repo.
+tools/mainnet-*.mjs
+
+# Runtime state written by the library and by test runs.
+.x402-*
+.fee-*
+.tab-*
+
+# Build output from the engine adapters.
+unity/verify/bin/
+unity/verify/obj/
+unreal/verify/*.obj
+unreal/verify/*.exe
+unreal/verify/*.pdb
+unreal/Binaries/
+unreal/Intermediate/

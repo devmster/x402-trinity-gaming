@@ -1,0 +1,20 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "x402 Gaming",
+  "Description": "Headless payment bridge for game storefronts. No UI, no overlay - your server does everything that moves money; this signs and broadcasts events.",
+  "Category": "Monetization",
+  "CreatedBy": "x402 trinity",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "IsBetaVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "X402Gaming",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

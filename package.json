@@ -1,0 +1,110 @@
+{
+  "name": "402-trinity-gaming",
+  "version": "0.1.0",
+  "description": "Headless x402 payment backend for game storefronts. No UI, no overlay, no console output - a call in, an event out.",
+  "license": "BUSL-1.1",
+  "type": "module",
+  "main": "./dist/x402.js",
+  "types": "./dist/x402.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/x402.d.ts",
+      "default": "./dist/x402.js"
+    },
+    "./seller": {
+      "types": "./dist/seller.d.ts",
+      "default": "./dist/seller.js"
+    },
+    "./budget-file": {
+      "types": "./dist/budget-file.d.ts",
+      "default": "./dist/budget-file.js"
+    },
+    "./evm-tx": {
+      "types": "./dist/evm-tx.d.ts",
+      "default": "./dist/evm-tx.js"
+    },
+    "./storefront": {
+      "types": "./dist/storefront.d.ts",
+      "default": "./dist/storefront.js"
+    },
+    "./signer": {
+      "types": "./dist/signer.d.ts",
+      "default": "./dist/signer.js"
+    },
+    "./proceeds-fee": {
+      "types": "./dist/proceeds-fee.d.ts",
+      "default": "./dist/proceeds-fee.js"
+    },
+    "./batch-manager": {
+      "types": "./dist/batch-manager.d.ts",
+      "default": "./dist/batch-manager.js"
+    }
+  },
+  "files": [
+    "dist/x402.js",
+    "dist/x402.min.js",
+    "dist/x402.d.ts",
+    "dist/seller.js",
+    "dist/seller.min.js",
+    "dist/seller.d.ts",
+    "dist/evm-tx.js",
+    "dist/evm-tx.min.js",
+    "dist/evm-tx.d.ts",
+    "dist/budget-file.js",
+    "dist/budget-file.min.js",
+    "dist/budget-file.d.ts",
+    "src/x402.ts",
+    "src/seller.ts",
+    "src/evm-tx.ts",
+    "src/budget-file.ts",
+    "README.md",
+    "LICENSE",
+    "dist/storefront.js",
+    "dist/storefront.min.js",
+    "dist/storefront.d.ts",
+    "src/storefront.ts",
+    "dist/signer.js",
+    "dist/signer.min.js",
+    "dist/signer.d.ts",
+    "src/signer.ts",
+    "dist/proceeds-fee.js",
+    "dist/proceeds-fee.min.js",
+    "dist/proceeds-fee.d.ts",
+    "src/proceeds-fee.ts",
+    "dist/batch-manager.js",
+    "dist/batch-manager.min.js",
+    "dist/batch-manager.d.ts",
+    "src/batch-manager.ts",
+    "INTEGRATION.md"
+  ],
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run typecheck"
+  },
+  "devDependencies": {
+    "@noble/curves": "^2.3.0",
+    "@noble/hashes": "^2.3.0",
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^7.0.2"
+  },
+  "keywords": [
+    "x402",
+    "http-402",
+    "402-payment-required",
+    "eip-3009",
+    "gasless",
+    "usdc",
+    "base",
+    "game-storefront",
+    "in-game-purchases",
+    "headless",
+    "white-label",
+    "unreal",
+    "unity"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

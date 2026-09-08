@@ -1,0 +1,23 @@
+{
+  "note": "Golden vectors from the TypeScript signer. A C# port must reproduce every value here byte for byte.",
+  "chain": {
+    "name": "USD Coin",
+    "version": "2",
+    "chainId": 8453,
+    "verifyingContract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+  },
+  "privateKey": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "expectedAddress": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+  "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f",
+  "authorization": {
+    "from": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+    "to": "0x9f2c4a1b3d5e6f708192a3b4c5d6e7f809a1b2c3",
+    "value": "1500000",
+    "validAfter": "1700000000",
+    "validBefore": "1700003600",
+    "nonce": "0xabababababababababababababababababababababababababababababababab"
+  },
+  "eip712Digest": "0x44f032cdbeacccb54264060a058e0cd7197acc0767691e6e60d4e9093196710d",
+  "keccakEmpty": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+  "transferWithAuthorizationTypeHash": "0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267"
+}
