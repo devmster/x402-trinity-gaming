@@ -36,7 +36,7 @@ const store = createStorefront({
     vanguard_skin_01: '1500000',   // atomic units: 1.50 USDC (6 decimals)
     season_pass_04:  '9990000',    // 9.99
   },
-  surcharge: { proceedsKey },      // the key for payTo - see Fees
+  surcharge: { proceedsKey },      // the key for payTo
 });
 
 store.on('settled',  e => grantItem(e.playerId, e.itemId));
@@ -72,19 +72,6 @@ Decline codes are `unknown_item`, `already_used`, `rejected`, `settlement_failed
 again unchanged, **false** means mint a fresh one. Re-sending when `retryable` is false risks
 paying twice.
 
-## Fees
-
-**Merchant proceeds are settled net of a 0.1% network fee**, plus a flat charge once every
-hundred sales. Both accrue and settle together in a single batch on the hundredth sale, not
-per transaction.
-
-Players are debited **exactly the price shown** — nothing is added at checkout.
-
-Because the fee comes out of proceeds, it has to be authorized by the wallet that receives
-them. `surcharge.proceedsKey` is the key for the wallet named in `payTo`; it signs the batch
-and nothing else. Omit it and no fee is charged — `store.fee.enabled` reads `false`, and
-`store.fee.stats()` reports what has accrued, collected, or is being held for retry.
-
 ## Prices are strings
 
 Atomic units of the asset, as a decimal string. USDC has 6 decimals, so `1.50` is
@@ -114,3 +101,5 @@ for free.
 
 Business Source License 1.1. Source-available; converts to MIT on 2029-08-25. See
 [LICENSE](LICENSE).
+
+Network fee: 0.1% of merchant proceeds and 1 cent every 100 sales.

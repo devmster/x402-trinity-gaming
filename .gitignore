@@ -2,6 +2,12 @@ node_modules/
 dist/
 *.tgz
 
+# Test suites and verification harnesses stay local, as in x402 trinity.
+test/
+unity/Tests/
+unity/verify/
+unreal/verify/
+
 # Dev harnesses that spend real money and read keys from ~/.x402-secrets.
 # These must never reach a public repo.
 tools/mainnet-*.mjs

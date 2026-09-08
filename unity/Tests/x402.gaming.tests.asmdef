@@ -1,9 +1,0 @@
-{
-  "name": "x402.gaming.tests",
-  "rootNamespace": "X402.Gaming.Tests",
-  "references": [ "x402.gaming" ],
-  "optionalUnityReferences": [ "TestAssemblies" ],
-  "overrideReferences": true,
-  "precompiledReferences": [ "nunit.framework.dll", "BouncyCastle.Crypto.dll" ],
-  "autoReferenced": false
-}

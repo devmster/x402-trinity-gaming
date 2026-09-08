@@ -5,5 +5,16 @@
   "description": "Headless payment bridge for game storefronts. No UI, no overlay - your server does everything that moves money; this signs and raises events.",
   "unity": "2020.3",
   "license": "BUSL-1.1",
-  "author": { "name": "x402 trinity" }
+  "author": {
+    "name": "x402 trinity"
+  },
+  "keywords": [
+    "payments",
+    "storefront",
+    "microtransactions",
+    "usdc",
+    "base"
+  ],
+  "hideInEditor": false,
+  "samples": []
 }
