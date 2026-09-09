@@ -1,6 +1,6 @@
 # x402-trinity-gaming
 
-**A headless payment utility for the gaming economy.**
+**A headless, zero-UI payment utility for Unity and Unreal Engine storefronts.**
 
 No UI. No overlay. No browser handoff. No console output. Your button, your art, your unlock
 animation — this handles the money and gets out of the way.
