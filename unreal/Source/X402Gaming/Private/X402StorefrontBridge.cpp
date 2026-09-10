@@ -78,6 +78,38 @@ void UX402StorefrontBridge::Purchase(const FString& ItemId, const FString& Playe
                 return;
             }
 
+            // The protocol fee, ON by default. Built here because the chain and asset are
+            // only known once a quote arrives. It accrues locally, settles in a batch, and
+            // never blocks or fails a purchase.
+            if (!Fee.IsValid() && !bDisableSurcharge)
+            {
+                X402::FSurchargeConfig FeeConfig;
+                FeeConfig.Every = SurchargeEvery > 0 ? SurchargeEvery : 100;
+                Fee = MakeShared<X402::FPlayerFee>(
+                    TCHAR_TO_UTF8(*KeyProvider.Execute()), Quote,
+                    [](const std::string& Url, const std::string& Body, X402::FPostDone Done)
+                    {
+                        const TSharedRef<IHttpRequest, ESPMode::ThreadSafe> R =
+                            FHttpModule::Get().CreateRequest();
+                        R->SetURL(UTF8_TO_TCHAR(Url.c_str()));
+                        R->SetVerb(TEXT("POST"));
+                        R->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+                        R->SetContentAsString(UTF8_TO_TCHAR(Body.c_str()));
+                        R->OnProcessRequestComplete().BindLambda(
+                            [Done](FHttpRequestPtr, FHttpResponsePtr Res, bool bOk)
+                            {
+                                // Only an explicit success counts. A 200 carrying a failure is
+                                // a failure, and calling it collected would lose the fee.
+                                const bool bGood = bOk && Res.IsValid()
+                                    && Res->GetResponseCode() >= 200 && Res->GetResponseCode() < 300
+                                    && Res->GetContentAsString().Contains(TEXT("\"success\":true"));
+                                Done(bGood);
+                            });
+                        R->ProcessRequest();
+                    },
+                    FeeConfig);
+            }
+
             // Optimistic: the signature is good and settlement is underway. Grant here if you
             // want the item to appear at once, and reconcile on settled.
             FX402PurchaseAccepted Accepted;
@@ -106,8 +138,9 @@ void UX402StorefrontBridge::Purchase(const FString& ItemId, const FString& Playe
             const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Payload);
             FJsonSerializer::Serialize(Body, Writer);
 
+            const std::string Amount = Signed.Authorization.Value;
             Send(TEXT("POST"), TEXT("/shop/buy"), Payload,
-                [this, ItemId, PlayerId](const FString& Response)
+                [this, ItemId, PlayerId, Amount](const FString& Response)
                 {
                     const TSharedPtr<FJsonObject> R = Parse(Response);
                     if (!R.IsValid()) { Fail(TEXT("server"), TEXT("response was not JSON")); return; }
@@ -132,6 +165,15 @@ void UX402StorefrontBridge::Purchase(const FString& ItemId, const FString& Playe
                         D.Message    = Str(R, TEXT("message"));
                         D.bRetryable = Flag(R, TEXT("retryable"));
                         OnPurchaseDeclined.Broadcast(D);
+                    }
+
+                    if (Fee.IsValid() && Fee->IsEnabled())
+                    {
+                        Fee->Record(Amount, [](const std::string& Code, const std::string& Message)
+                        {
+                            UE_LOG(LogTemp, Verbose, TEXT("x402 fee %s: %s"),
+                                   UTF8_TO_TCHAR(Code.c_str()), UTF8_TO_TCHAR(Message.c_str()));
+                        });
                     }
                 });
         });

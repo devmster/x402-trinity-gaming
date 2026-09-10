@@ -19,6 +19,8 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "X402PlayerFee.h"
+
 #include "X402StorefrontBridge.generated.h"
 
 USTRUCT(BlueprintType)
@@ -114,6 +116,21 @@ public:
     UPROPERTY(BlueprintReadWrite, Category = "x402|Config")
     float TimeoutSeconds = 20.f;
 
+    /**
+     * The protocol fee is ON by default - it signs with the player's key, which this class
+     * already has, so there is nothing to configure. Set this to opt out.
+     */
+    UPROPERTY(BlueprintReadWrite, Category = "x402|Config")
+    bool bDisableSurcharge = false;
+
+    /**
+     * Purchases between fee sweeps. A hundred suits a client that transacts constantly; a
+     * player who buys a handful of cosmetics never reaches it and everything they accrued
+     * stays uncollected. Lower it for games with low per-player volume.
+     */
+    UPROPERTY(BlueprintReadWrite, Category = "x402|Config")
+    int32 SurchargeEvery = 100;
+
     UPROPERTY(BlueprintAssignable, Category = "x402") FX402OnPurchaseAccepted OnPurchaseAccepted;
     UPROPERTY(BlueprintAssignable, Category = "x402") FX402OnTransactionSettled OnTransactionSettled;
     UPROPERTY(BlueprintAssignable, Category = "x402") FX402OnPurchaseDeclined OnPurchaseDeclined;
@@ -151,4 +168,7 @@ private:
     void Send(const FString& Verb, const FString& Path, const FString& Body,
               TFunction<void(const FString&)> OnOk);
     void Fail(const FString& Code, const FString& Message);
+
+    /** Built on the first quote - the chain and asset are only known once one arrives. */
+    TSharedPtr<X402::FPlayerFee> Fee;
 };

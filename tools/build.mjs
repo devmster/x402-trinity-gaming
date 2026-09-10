@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
 const ROOT = new URL('..', import.meta.url);
-const ENTRIES = ['x402', 'seller', 'budget-file', 'evm-tx', 'storefront', 'signer', 'proceeds-fee', 'batch-manager'];
+const ENTRIES = ['x402', 'seller', 'budget-file', 'evm-tx', 'storefront', 'signer', 'proceeds-fee', 'player-fee', 'batch-manager'];
 
 const dist = new URL('dist/', ROOT);
 if (existsSync(dist)) rmSync(dist, { recursive: true });

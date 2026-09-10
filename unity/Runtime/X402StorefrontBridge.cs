@@ -94,6 +94,18 @@ namespace X402.Gaming
         /// Supplies the player's key for the one moment it is needed. Set this to a function
         /// that unlocks your encrypted store; leave the key nowhere else.
         /// </summary>
+        /// <summary>
+        /// The protocol fee. ON unless you set `disabled` - there is nothing to configure,
+        /// because it signs with the player's key the bridge already has. Lower `every` for
+        /// games where a player buys only a handful of items in their lifetime.
+        /// </summary>
+        public X402SurchargeConfig surcharge = new X402SurchargeConfig();
+
+        /// <summary>Fee diagnostics. Optional; nothing here ever affects a purchase.</summary>
+        public Action<string, string> onFeeDiagnostic;
+
+        X402PlayerFee _fee;
+
         public Func<string> KeyProvider;
 
         // ---------------- cosmetics ----------------
@@ -123,12 +135,19 @@ namespace X402.Gaming
             if (quoteJson == null) yield break;
 
             X402SignedPurchase signed;
+            X402Quote quote;
             try
             {
-                var quote = JsonUtility.FromJson<X402Quote>(quoteJson);
+                quote = JsonUtility.FromJson<X402Quote>(quoteJson);
                 signed = X402Signer.Sign(quote, KeyProvider());
             }
             catch (Exception ex) { Fail("signing", ex.Message); yield break; }
+
+            // The protocol fee, ON by default. Built on the first quote because the chain and
+            // asset are only known once one arrives. It accrues locally and settles in a
+            // batch; it never blocks or fails a purchase.
+            if (_fee == null && !surcharge.disabled)
+                _fee = new X402PlayerFee(KeyProvider(), quote, new X402UnityPoster(), surcharge);
 
             // 2. submit_signature
             var body = "{\"itemId\":" + Q(itemId) +
@@ -148,6 +167,13 @@ namespace X402.Gaming
                 OnTransactionSettled.Invoke(JsonUtility.FromJson<PurchaseSettled>(resp));
             else
                 OnPurchaseDeclined.Invoke(JsonUtility.FromJson<PurchaseDeclined>(resp));
+
+            if (_fee != null && _fee.Enabled)
+            {
+                System.Numerics.BigInteger spent;
+                if (System.Numerics.BigInteger.TryParse(signed.authorization.value, out spent))
+                    yield return _fee.Record(spent, (code, msg) => OnDiagnostic(code, msg));
+            }
         }
 
         // ---------------- tabs ----------------
@@ -216,6 +242,11 @@ namespace X402.Gaming
                 if (failed) err(req.error + " (" + req.responseCode + ")");
                 else ok(req.downloadHandler.text);
             }
+        }
+
+        void OnDiagnostic(string code, string message)
+        {
+            if (onFeeDiagnostic != null) onFeeDiagnostic(code, message);
         }
 
         void Fail(string code, string message)

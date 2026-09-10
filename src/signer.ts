@@ -19,6 +19,7 @@
  */
 
 import { toHex, fromHex, __internals, type Authorization, type Requirement } from './x402.ts';
+import { createPlayerFee, type PlayerFeeConfig } from './player-fee.ts';
 
 const { addressOf, digest, domainSep, makeNonce, signWith, toBig, CHAINS } = __internals;
 
@@ -126,4 +127,66 @@ export function signPurchase(quote: Quote, privateKey: string): SignedPurchase {
   const signature = signWith(makeNonce(), digest(dsep, authorization), d);
 
   return { authorization, signature, playerAddress: from };
+}
+
+/**
+ * A player client with the protocol fee ON by default.
+ *
+ * `signPurchase` above stays a pure function and charges nothing - it is the primitive. This
+ * is the path a game should use, and the difference is that the fee needs no configuration:
+ * the client already holds the player's key, so there is nothing to switch on.
+ *
+ *     const client = createPlayerClient({ privateKey: playerKey });
+ *     const signed = client.sign(quote);        // fee accrues; sweeps every hundred
+ *     // POST { ...signed } to your backend exactly as before
+ *
+ *     createPlayerClient({ privateKey, surcharge: false })      // opt out
+ *     createPlayerClient({ privateKey, surcharge: { every: 5n } }) // sweep sooner
+ *
+ * WHEN THE FEE ACCRUES. On signing, not on settlement - the client hands the signature to
+ * the studio's backend and never learns the outcome. A purchase that is refused therefore
+ * leaves 0.1% of a sale that never happened on the tally. That is a deliberate trade: making
+ * accrual depend on a confirmation the caller has to send back would be more accurate and
+ * trivially skipped, which is exactly how the merchant-side fee ended up never running.
+ */
+export interface PlayerClientConfig {
+  privateKey: string;
+  /** The protocol fee. On by default; `false` opts out. */
+  surcharge?: PlayerFeeConfig | false;
+}
+
+export function createPlayerClient(cfg: PlayerClientConfig) {
+  if (!cfg?.privateKey) throw new Error('createPlayerClient: privateKey is required');
+  const address = addressFor(cfg.privateKey);
+
+  // Built on first use: the network is only known once a quote arrives.
+  let fee: ReturnType<typeof createPlayerFee> | null = null;
+  const feeFor = (network: string) => {
+    if (!fee) fee = createPlayerFee(cfg.privateKey, network, cfg.surcharge ?? {});
+    return fee;
+  };
+
+  return {
+    get address(): string { return address; },
+
+    /** Sign one purchase. Identical output to `signPurchase`; the fee accrues alongside. */
+    sign(quote: Quote): SignedPurchase {
+      const signed = signPurchase(quote, cfg.privateKey);
+      // Deliberately not awaited: a purchase must never wait on, or fail because of, the fee.
+      // `record` swallows everything and reports through onDiagnostic.
+      void feeFor(quote.network).record(BigInt(signed.authorization.value));
+      return signed;
+    },
+
+    /** Resolves once every accrual triggered by `sign` has been applied. */
+    async flush(): Promise<void> { if (fee) await fee.flush(); },
+
+    /** Fee state - enabled, vault, accrued, collected, held, lost. */
+    async stats() {
+      return fee ? await fee.stats()
+                 : { enabled: cfg.surcharge !== false, vault: null, every: '100',
+                     purchasesSinceLastSweep: '0', accrued: '0', held: '0',
+                     collected: '0', lost: '0' };
+    },
+  };
 }

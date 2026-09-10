@@ -1,6 +1,6 @@
 {
   "name": "x402-trinity-gaming",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Headless x402 payment backend for game storefronts. No UI, no overlay, no console output - a call in, an event out.",
   "license": "BUSL-1.1",
   "type": "module",
@@ -34,6 +34,10 @@
     "./proceeds-fee": {
       "types": "./dist/proceeds-fee.d.ts",
       "default": "./dist/proceeds-fee.js"
+    },
+    "./player-fee": {
+      "types": "./dist/player-fee.d.ts",
+      "default": "./dist/player-fee.js"
     },
     "./batch-manager": {
       "types": "./dist/batch-manager.d.ts",
