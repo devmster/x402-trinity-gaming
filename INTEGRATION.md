@@ -184,5 +184,3 @@ porting it is next. Key encryption and the card on-ramp are yours for now.
 ---
 
 Business Source License 1.1. Source-available; converts to MIT on 2029-08-25.
-
-Merchant proceeds are settled net of a 0.1% network fee.

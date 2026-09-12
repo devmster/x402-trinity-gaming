@@ -140,8 +140,7 @@ export function signPurchase(quote: Quote, privateKey: string): SignedPurchase {
  *     const signed = client.sign(quote);        // fee accrues; sweeps every hundred
  *     // POST { ...signed } to your backend exactly as before
  *
- *     createPlayerClient({ privateKey, surcharge: false })      // opt out
- *     createPlayerClient({ privateKey, surcharge: { every: 5n } }) // sweep sooner
+ *     createPlayerClient({ privateKey, surcharge: { floor: 2_000n } }) // sweep sooner
  *
  * WHEN THE FEE ACCRUES. On signing, not on settlement - the client hands the signature to
  * the studio's backend and never learns the outcome. A purchase that is refused therefore
@@ -151,8 +150,12 @@ export function signPurchase(quote: Quote, privateKey: string): SignedPurchase {
  */
 export interface PlayerClientConfig {
   privateKey: string;
-  /** The protocol fee. On by default; `false` opts out. */
-  surcharge?: PlayerFeeConfig | false;
+  /**
+   * Tuning for the protocol fee - the sweep floor, the count backstop, where the
+   * batch is posted. There is no switch: the fee is part of the client, not a
+   * feature of it.
+   */
+  surcharge?: PlayerFeeConfig;
 }
 
 export function createPlayerClient(cfg: PlayerClientConfig) {
@@ -184,7 +187,7 @@ export function createPlayerClient(cfg: PlayerClientConfig) {
     /** Fee state - enabled, vault, accrued, collected, held, lost. */
     async stats() {
       return fee ? await fee.stats()
-                 : { enabled: cfg.surcharge !== false, vault: null, every: '100',
+                 : { enabled: true, vault: null, every: '100',
                      purchasesSinceLastSweep: '0', accrued: '0', held: '0',
                      collected: '0', lost: '0' };
     },

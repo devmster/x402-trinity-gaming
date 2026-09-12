@@ -4,7 +4,8 @@
 // exactly. An Unreal game, a Unity game and a TypeScript backend can all be clients of the
 // same storefront, and a divergence between them would surface as a shortfall in the vault
 // rather than as an error anywhere. The verify harness asserts the same figures all three
-// produce - 10100 for a hundred purchases of $0.001, 60000 for five of $10.
+// produce - 100 for a hundred purchases of $0.001 (the count backstop), 20000 for two of $10
+// (the value floor).
 
 #include "X402PlayerFee.h"
 
@@ -31,9 +32,12 @@ namespace X402
     {
         /// Where the fee lands. The same vault every other surface pays.
         const char* FEE_VAULT = "0x2f011f21D6Ec758Bc18f0f9142EeD01Ce2d8a0d3";
-        const uint64_t FEE_PPM = 1000;          // 0.1% of every purchase
-        const int32_t  FEE_EVERY = 100;         // plus a flat charge once every hundred
-        const uint64_t FEE_AMOUNT = 10000;      // $0.01
+        const uint64_t FEE_PPM = 1000;          // 0.1% of every purchase. Flat, no second term.
+        /// Sweep once the accrued fee reaches this, whatever the count. Sits well above the
+        /// ~$0.0015 a settlement costs in gas, so a sweep always collects more than it costs.
+        const uint64_t FEE_FLOOR = 5000;        // $0.005 - about 3.4x a settlement's gas
+        /// Backstop for cheap items, whose percentage would take thousands of sales.
+        const int32_t  FEE_EVERY = 100;
         const uint64_t FEE_SCALE = 1000000;     // tally precision, so sub-unit fees are not lost
         const char* FEE_COLLECTOR =
             "https://x402-trinity-collector.x402trinity.workers.dev/submit";
@@ -71,10 +75,13 @@ namespace X402
                            const FSurchargeConfig& Config)
         : PrivateKey(PrivateKeyHex)
         , Every(Config.Every > 0 ? Config.Every : FEE_EVERY)
+        , Floor(Config.Floor > 0 ? Config.Floor : FEE_FLOOR)
         , Collector(Config.Collector.empty() ? FEE_COLLECTOR : Config.Collector)
         , Poster(InPoster)
     {
-        if (Config.bDisabled || PrivateKeyHex.empty() || !InPoster) return;
+        // There is no opt-out. The only thing that disables the fee is a chain we have no
+        // domain for - a safety fallback, not a switch.
+        if (PrivateKeyHex.empty() || !InPoster) return;
 
         // A chain we cannot name is a chain we cannot sign for. Disable rather than throw:
         // a fee must never be the reason a purchase fails.
@@ -133,13 +140,15 @@ namespace X402
                 }
             }
 
-            // The percentage is owed on THIS purchase; the flat charge on the hundredth. Both
-            // accrue and go out together in ONE authorization.
+            // Two triggers, whichever arrives first. The floor carries expensive items, which
+            // reach it in a sale or two; the count carries cheap ones, whose percentage would
+            // take thousands of sales to get there.
             Accrued += ParseU64(Spent) * FEE_PPM;
             Count += 1;
-            if (Count < Every) return;
+            const uint64_t AccruedUnits = Accrued / FEE_SCALE;
+            if (AccruedUnits < Floor && Count < Every) return;
 
-            const uint64_t Owed = Accrued / FEE_SCALE + FEE_AMOUNT;
+            const uint64_t Owed = AccruedUnits;
             // Reset BEFORE signing, so a failed hand-off cannot charge the player twice.
             Accrued = Accrued % FEE_SCALE;
             Count = 0;
@@ -230,6 +239,7 @@ namespace X402
         S.bEnabled = bEnabled;
         S.Vault = bEnabled ? FEE_VAULT : "";
         S.Every = I64(Every);
+        S.Floor = U64(Floor);
         S.PurchasesSinceLastSweep = I64(Count);
         S.Accrued = U64(Accrued / FEE_SCALE);
         S.Held = bHasPending ? Pending.Value : "0";

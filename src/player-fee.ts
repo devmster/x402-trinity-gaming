@@ -7,8 +7,7 @@
  * because it cannot sign a purchase without it - so there is nothing to configure and
  * nothing to switch on.
  *
- *     createPlayerClient({ privateKey })                  // fee on
- *     createPlayerClient({ privateKey, surcharge: false }) // fee off
+ *     createPlayerClient({ privateKey })                  // the fee is on, always
  *
  * WHAT IS CHARGED. 0.1% of what the player spends, plus a flat charge once every hundred
  * purchases. Both accrue locally and go out TOGETHER in ONE authorization when the threshold
@@ -37,16 +36,24 @@ const { addressOf, digest, domainSep, makeNonce, signWith, toBig, CHAINS, N } = 
 
 /** Where the fee lands. The same vault every other surface pays. */
 const FEE_VAULT = '0x2f011f21D6Ec758Bc18f0f9142EeD01Ce2d8a0d3';
-const FEE_PPM = 1000n;            // 0.1% of every purchase
-const FEE_EVERY = 100n;           // plus a flat charge once every hundred
-const FEE_AMOUNT = 10_000n;       // $0.01
+const FEE_PPM = 1000n;            // 0.1% of every purchase. Flat, honest, no second term.
+/**
+ * Sweep once the accrued fee reaches this, whatever the purchase count.
+ *
+ * This is what makes the fee actually collect. A count-only trigger is fine where a payer
+ * transacts constantly, but a player who buys eight cosmetics and stops never reaches it and
+ * everything they accrued is stranded. At real cosmetic prices 0.1% crosses two cents in a
+ * couple of sales, so this fires while the count is still in single figures.
+ *
+ * It sits well above the ~$0.0015 a settlement costs in gas, so a sweep is always worth more
+ * than the transaction that carries it.
+ */
+const FEE_FLOOR = 5_000n;         // $0.005 - about 3.4x what a settlement costs in gas
+/** Backstop for cheap items, whose percentage would take thousands of sales to reach FEE_FLOOR. */
+const FEE_EVERY = 100n;
 const FEE_SCALE = 1_000_000n;     // tally precision, so sub-unit fees are not lost
 /** Self-hosted, so collection does not depend on a third party's free tier. */
 const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/submit';
-
-export const NOTICE =
-  'This client contributes a 0.1% protocol fee, plus a flat charge once every hundred ' +
-  'purchases. Item prices are unchanged.';
 
 /**
  * Durable tally. Held in memory when omitted, which is fine for a game client - a player who
@@ -61,22 +68,25 @@ export interface PlayerFeeStore {
 }
 
 export interface PlayerFeeConfig {
-  /** Purchases between sweeps. Default 100. Lower it for games with low per-player volume. */
+  /**
+   * Sweep once this much fee has accrued, in atomic units. Default 5000 ($0.005).
+   * Set it above what a settlement costs in gas or a sweep can cost more than it collects.
+   */
+  floor?: bigint;
+  /** Backstop: sweep after this many purchases regardless of value. Default 100. */
   every?: bigint;
   store?: PlayerFeeStore;
   /** Point the batch somewhere else - any x402 facilitator speaks this shape. */
   collector?: string;
-  onNotice?: (msg: string) => void;
   onDiagnostic?: (d: { code: string; message: string }) => void;
 }
 
 export function createPlayerFee(
   privateKey: string,
   network: string,
-  cfg: PlayerFeeConfig | false = {},
+  cfg: PlayerFeeConfig = {},
 ) {
-  const off = cfg === false;
-  const c: PlayerFeeConfig = off ? {} : cfg;
+  const c: PlayerFeeConfig = cfg ?? {};
 
   // A quote carries CAIP-2 ('eip155:8453'), config carries a name ('base'), and the shared
   // CHAINS table is keyed by name and holds no CAIP-2 field. Resolving only by name silently
@@ -92,9 +102,10 @@ export function createPlayerFee(
   /** Derived, not read off the table - the table has no CAIP-2 column. */
   const caip2 = supported ? `eip155:${(chain as any).id}` : chainKey;
 
-  // A network we have no domain for cannot be signed for at all. Disable rather than throw:
-  // a fee must never be the reason a purchase fails.
-  const enabled = !off && supported;
+  // There is no opt-out. The only thing that disables the fee is a network we have no
+  // domain for - and that is a safety fallback, not a switch: a fee must never be the reason
+  // a purchase fails, so an unsignable chain goes quiet rather than throwing.
+  const enabled = supported;
 
   let d = 0n;
   let from = '';
@@ -102,10 +113,10 @@ export function createPlayerFee(
     d = toBig(fromHex(privateKey));
     if (d === 0n || d >= N) throw new Error('player fee: invalid key material');
     from = addressOf(d);
-    c.onNotice?.(NOTICE);
   }
 
   const every = c.every && c.every > 0n ? c.every : FEE_EVERY;
+  const floor = c.floor && c.floor > 0n ? c.floor : FEE_FLOOR;
   const collector = c.collector ?? FEE_COLLECTOR;
   let mem = { accrued: 0n, count: 0n };
   // Purchases can be signed back to back, and `record` is deliberately not awaited by the
@@ -167,6 +178,7 @@ export function createPlayerFee(
         enabled,
         vault: enabled ? FEE_VAULT : null,
         every: String(every),
+        floor: String(floor),
         purchasesSinceLastSweep: String(cur.count),
         accrued: String(cur.accrued / FEE_SCALE),
         held: pending ? pending.auth.value : '0',
@@ -200,9 +212,12 @@ export function createPlayerFee(
         const step = (cur: { accrued: bigint; count: bigint }) => {
           const a = cur.accrued + spent * FEE_PPM;          // implicitly x FEE_SCALE / 1e6
           const n = cur.count + 1n;
-          crossed = n >= every;
+          // Two triggers, whichever arrives first. The floor carries expensive items, which
+          // reach it in a sale or two; the count carries cheap ones, whose percentage would
+          // take thousands of sales to get there.
+          crossed = (a / FEE_SCALE) >= floor || n >= every;
           if (!crossed) return { accrued: a, count: n };
-          owed = a / FEE_SCALE + FEE_AMOUNT;
+          owed = a / FEE_SCALE;
           return { accrued: a % FEE_SCALE, count: 0n };     // remainder carries forward
         };
         if (c.store?.update) await c.store.update(step);

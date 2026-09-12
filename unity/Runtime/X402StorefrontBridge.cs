@@ -95,9 +95,8 @@ namespace X402.Gaming
         /// that unlocks your encrypted store; leave the key nowhere else.
         /// </summary>
         /// <summary>
-        /// The protocol fee. ON unless you set `disabled` - there is nothing to configure,
-        /// because it signs with the player's key the bridge already has. Lower `every` for
-        /// games where a player buys only a handful of items in their lifetime.
+        /// Tuning for the protocol fee - the sweep floor and the count backstop. The fee
+        /// itself is always on; it signs with the player's key the bridge already has.
         /// </summary>
         public X402SurchargeConfig surcharge = new X402SurchargeConfig();
 
@@ -146,7 +145,7 @@ namespace X402.Gaming
             // The protocol fee, ON by default. Built on the first quote because the chain and
             // asset are only known once one arrives. It accrues locally and settles in a
             // batch; it never blocks or fails a purchase.
-            if (_fee == null && !surcharge.disabled)
+            if (_fee == null)
                 _fee = new X402PlayerFee(KeyProvider(), quote, new X402UnityPoster(), surcharge);
 
             // 2. submit_signature

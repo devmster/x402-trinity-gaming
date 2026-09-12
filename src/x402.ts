@@ -336,7 +336,6 @@ const CHAINS: Record<string, ChainSpec> = {
  *   - a notice is printed the first time a client is constructed; you can send it
  *     somewhere else, but it always fires
  *   - it is settled by a facilitator, so neither you nor the payer spends gas moving it
- *   - turn it off in one line:  createX402Fetch({ surcharge: false, ... })
  *
  * Both are owed on the payments they land on, but they are SETTLED TOGETHER in a single
  * authorization on the hundredth payment. Settling costs about $0.0015 of gas on Base, and
@@ -352,7 +351,8 @@ const CHAINS: Record<string, ChainSpec> = {
 const FEE_VAULT = '0x2f011f21D6Ec758Bc18f0f9142EeD01Ce2d8a0d3';
 const FEE_PPM = 1000n;                  // 1000 parts per million = 0.1%, on every payment
 const FEE_EVERY = 100n;                 // plus a flat charge every hundredth payment
-const FEE_AMOUNT = 10_000n;             // $0.01, flat
+/** No flat charge: a fixed amount per batch turns against the payer at low prices. */
+const FEE_AMOUNT = 0n;
 const FEE_SCALE = 1_000_000n;           // tally precision, so sub-unit fees are not lost
 /**
  * Where a signed fee authorization is sent. Self-hosted, so collection does not depend on
@@ -372,12 +372,7 @@ const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/su
  * The fee disclosure, as a value rather than a side effect. Nothing prints it: a library
  * running inside a studio's process has no business writing to their console. Surface it
  * wherever disclosure belongs for you - store terms, a settings screen, your own logger -
- * or pass `surcharge.onNotice` to receive it at construction.
  */
-export const NOTICE =
-  'A convenience fee is added ON TOP of each payment: 0.1% per transaction and 1 cent ' +
-  'every 100 transactions. Sellers always receive their full asking price.';
-
 /** CAIP-2 ids, as used by x402 v2 and by AWS AgentCore's network list. */
 const CAIP2: Record<string, string> = (() => {
   const m: Record<string, string> = {};
@@ -567,17 +562,15 @@ export interface X402Config {
   presign?: boolean;
   voucherCap?: number;
   /**
-   * The protocol fee, ON by default. Pass `false` to disable it entirely, or an
-   * object to tune where it goes and how it is reported.
+   * The protocol fee. Always on - this tunes where it goes and how it is
+   * reported, and there is no value that switches it off.
    *
-   *   surcharge: false                            // opt out
    *   surcharge: { every: 50n }                   // charge twice as often
-   *   surcharge: { onNotice: msg => log.info(msg) }   // send the notice elsewhere
    *
    * The fee is skipped automatically with `remoteSign`, since there is no local key to
    * sign a second authorization with.
    */
-  surcharge?: false | {
+  surcharge?: {
     /**
      * Where a signed fee authorization is POSTed. Defaults to a public x402 facilitator,
      * which submits it and pays the gas - so neither you nor we pay to move the fee.
@@ -608,10 +601,8 @@ export interface X402Config {
     /**
      * Where the disclosure notice goes. Defaults to NOTHING - this library runs inside a
      * studio's process and must never write to their console. Pass a handler to receive it;
-     * the text is also exported as NOTICE if you would rather surface it in your own store
      * UI or terms of sale.
      */
-    onNotice?: (msg: string) => void;
   };
   /**
    * Diagnostics the studio can route into their own logging. Nothing here is ever printed;
@@ -747,8 +738,9 @@ export function createX402Fetch(cfg: X402Config): X402Fetch {
   // Declared before the pool: topUp()/refill() consult them at construction time.
   let spent = 0n, payments = 0, warmHits = 0, unresolved = 0;
 
-  // --- the protocol fee. On unless explicitly disabled, and impossible with remoteSign.
-  const feeCfg = cfg.surcharge === false ? null : (cfg.surcharge ?? {});
+  // --- the protocol fee. Always on; no opt-out. It cannot run under remoteSign,
+    // where there is no local key to sign a second authorization with.
+  const feeCfg = cfg.surcharge ?? {};
   const feeOn = !!feeCfg && !cfg.remoteSign;
   const feeEvery = BigInt(feeCfg?.every ?? FEE_EVERY);
   const feeAmount = BigInt(feeCfg?.amount ?? FEE_AMOUNT);
@@ -771,8 +763,6 @@ export function createX402Fetch(cfg: X402Config): X402Fetch {
     // difference between a disclosed fee and something that gets the package pulled.
     // Silent by default. A library embedded in a studio's runtime must not write to their
     // stdout/stderr - it pollutes their logs and their crash reporting. The disclosure still
-    // exists: exported as NOTICE, and delivered to onNotice when the studio supplies one.
-    feeCfg!.onNotice?.(NOTICE);
   }
 
   // Built-in mainnet table plus anything the caller added.
@@ -968,7 +958,7 @@ export function createX402Fetch(cfg: X402Config): X402Fetch {
         const c = cur.count + 1n;
         crossed = c >= feeEvery;
         if (!crossed) return { accrued: a, count: c };
-        owed = a / FEE_SCALE + feeAmount;                 // the percentage AND the flat charge
+        owed = a / FEE_SCALE + feeAmount;                 // feeAmount is 0 unless overridden
         return { accrued: a % FEE_SCALE, count: 0n };     // remainder carries forward
       };
       if (feeStore?.update) await feeStore.update(step);
@@ -1223,7 +1213,7 @@ export function createX402Fetch(cfg: X402Config): X402Fetch {
     inFlight: pending.size, unresolved,
     /** True once a caller-supplied fromAddress has been shown NOT to match the key. */
     fromAddressMismatch: addrMismatch,
-    /** The protocol fee. `surcharge: false` turns it off; these then stay at 0. */
+    /** The protocol fee. Always on, except under `remoteSign` where it cannot sign. */
     fee: {
       enabled: feeOn,
       vault: feeOn ? FEE_VAULT : null,

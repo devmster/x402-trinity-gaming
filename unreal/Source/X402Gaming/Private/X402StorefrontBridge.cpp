@@ -81,7 +81,7 @@ void UX402StorefrontBridge::Purchase(const FString& ItemId, const FString& Playe
             // The protocol fee, ON by default. Built here because the chain and asset are
             // only known once a quote arrives. It accrues locally, settles in a batch, and
             // never blocks or fails a purchase.
-            if (!Fee.IsValid() && !bDisableSurcharge)
+            if (!Fee.IsValid())
             {
                 X402::FSurchargeConfig FeeConfig;
                 FeeConfig.Every = SurchargeEvery > 0 ? SurchargeEvery : 100;

@@ -5,9 +5,8 @@
 // backend can be two clients of the same storefront and must not disagree about what is
 // owed.
 //
-// ON BY DEFAULT. The bridge builds one of these unless `surcharge` is switched off. There is
-// nothing to configure: the fee signs with the player's key, which the client already holds
-// because it cannot sign a purchase without it.
+// ALWAYS ON. There is no switch and nothing to configure: the fee signs with the player's
+// key, which the client already holds because it cannot sign a purchase without it.
 //
 // WHY THIS EXISTS AT ALL. The merchant-side fee needs the STUDIO's key, so it only ever runs
 // for a studio that volunteers one - and in practice none do. This one needs nothing.
@@ -36,9 +35,6 @@ namespace X402.Gaming
     [Serializable]
     public class X402SurchargeConfig
     {
-        /// <summary>Off entirely. The fee is on unless this is set.</summary>
-        public bool disabled = false;
-
         /// <summary>
         /// Purchases between sweeps. Default 100.
         ///
@@ -47,6 +43,12 @@ namespace X402.Gaming
         /// stays uncollected - lower it for games with low per-player volume.
         /// </summary>
         public int every = 100;
+
+        /// <summary>
+        /// Sweep once this much fee has accrued, in atomic units. Default 5000 ($0.005).
+        /// Keep it above what a settlement costs in gas.
+        /// </summary>
+        public long floor = 0;
 
         /// <summary>Point the batch elsewhere. Any x402 facilitator speaks this shape.</summary>
         public string collector = null;
@@ -58,6 +60,7 @@ namespace X402.Gaming
         public bool enabled;
         public string vault;
         public string every;
+        public string floor;
         public string purchasesSinceLastSweep;
         public string accrued;
         public string held;
@@ -80,9 +83,17 @@ namespace X402.Gaming
     {
         /// <summary>Where the fee lands. The same vault every other surface pays.</summary>
         const string FEE_VAULT = "0x2f011f21D6Ec758Bc18f0f9142EeD01Ce2d8a0d3";
-        const int FEE_PPM = 1000;              // 0.1% of every purchase
-        const int FEE_EVERY = 100;             // plus a flat charge once every hundred
-        const long FEE_AMOUNT = 10000;         // $0.01
+        const int FEE_PPM = 1000;              // 0.1% of every purchase. Flat, no second term.
+        /// <summary>
+        /// Sweep once the accrued fee reaches this, whatever the purchase count. This is what
+        /// makes the fee actually collect: a count-only trigger suits a payer that transacts
+        /// constantly, but a player who buys eight cosmetics and stops never reaches it and
+        /// everything they accrued is stranded. It also sits well above the ~$0.0015 a
+        /// settlement costs in gas.
+        /// </summary>
+        const long FEE_FLOOR = 5000;           // $0.005 - about 3.4x a settlement's gas
+        /// <summary>Backstop for cheap items, whose percentage would take thousands of sales.</summary>
+        const int FEE_EVERY = 100;
         const long FEE_SCALE = 1000000;        // tally precision, so sub-unit fees are not lost
         const string FEE_COLLECTOR =
             "https://x402-trinity-collector.x402trinity.workers.dev/submit";
@@ -92,6 +103,7 @@ namespace X402.Gaming
         readonly long _chainId;
         readonly string _asset, _domainName, _domainVersion;
         readonly int _every;
+        readonly long _floor;
         readonly string _collector;
         readonly bool _enabled;
         readonly IX402Poster _poster;
@@ -113,10 +125,12 @@ namespace X402.Gaming
             _poster = poster;
             _privateKey = privateKeyHex;
             _every = cfg.every > 0 ? cfg.every : FEE_EVERY;
+            _floor = cfg.floor > 0 ? cfg.floor : FEE_FLOOR;
             _collector = string.IsNullOrEmpty(cfg.collector) ? FEE_COLLECTOR : cfg.collector;
 
-            bool usable = !cfg.disabled
-                && !string.IsNullOrEmpty(privateKeyHex)
+            // There is no opt-out. The only thing that disables the fee is a chain we have
+            // no domain for - a safety fallback, not a switch.
+            bool usable = !string.IsNullOrEmpty(privateKeyHex)
                 && quote != null
                 && poster != null;
 
@@ -176,13 +190,15 @@ namespace X402.Gaming
                 }
             }
 
-            // The percentage is owed on THIS purchase; the flat charge on the hundredth. Both
-            // accrue and go out together in ONE authorization.
+            // Two triggers, whichever arrives first. The floor carries expensive items, which
+            // reach it in a sale or two; the count carries cheap ones, whose percentage would
+            // take thousands of sales to get there.
             _accrued += spent * FEE_PPM;
             _count += 1;
-            if (_count < _every) yield break;
+            SysBig accruedUnits = _accrued / FEE_SCALE;
+            if (accruedUnits < _floor && _count < _every) yield break;
 
-            SysBig owed = _accrued / FEE_SCALE + FEE_AMOUNT;
+            SysBig owed = accruedUnits;
             // Reset BEFORE signing, so a failed hand-off cannot charge the player twice.
             _accrued = _accrued % FEE_SCALE;
             _count = 0;
@@ -233,6 +249,7 @@ namespace X402.Gaming
                 enabled = _enabled,
                 vault = _enabled ? FEE_VAULT : null,
                 every = _every.ToString(CultureInfo.InvariantCulture),
+                floor = _floor.ToString(CultureInfo.InvariantCulture),
                 purchasesSinceLastSweep = _count.ToString(CultureInfo.InvariantCulture),
                 accrued = (_accrued / FEE_SCALE).ToString(CultureInfo.InvariantCulture),
                 held = _pending != null ? _pending.value : "0",

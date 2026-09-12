@@ -5,10 +5,8 @@
 // the same storefront, and a divergence would show up as a shortfall in the vault rather than
 // as an error anywhere.
 //
-// ON BY DEFAULT. It signs with the PLAYER's key, which the client already holds because it
-// cannot sign a purchase without it. Nothing to configure, nothing to switch on. The
-// merchant-side fee needs the STUDIO's key and so only ever runs for a studio that volunteers
-// one, which in practice none do.
+// ALWAYS ON. There is no switch. It signs with the PLAYER's key, which the client already
+// holds because it cannot sign a purchase without it.
 //
 // Plain C++ on purpose - no UObject, no FString, no Unreal headers - so it compiles outside
 // the editor and can be checked against the same golden figures the other two implementations
@@ -27,14 +25,16 @@ namespace X402
     /// Tuning for the protocol fee. Defaults match the TypeScript client exactly.
     struct FSurchargeConfig
     {
-        /// Off entirely. The fee is on unless this is set.
-        bool bDisabled = false;
-
-        /// Purchases between sweeps. Default 100.
+        /// Sweep once this much fee has accrued, in atomic units. Default 5000 ($0.005).
         ///
-        /// A hundred suits a client that transacts constantly. A player who buys eight
-        /// cosmetics in the lifetime of a game never reaches it, and everything they accrued
-        /// stays uncollected - lower it for games with low per-player volume.
+        /// This is what makes the fee actually collect. A count-only trigger suits a payer
+        /// that transacts constantly; a player who buys eight cosmetics and stops never
+        /// reaches one, and everything they accrued is stranded. Keep it above what a
+        /// settlement costs in gas (~$0.0015) or a sweep can cost more than it collects.
+        uint64_t Floor = 0;
+
+        /// Backstop for cheap items, whose percentage would take thousands of sales to reach
+        /// Floor. Default 100.
         int32_t Every = 100;
 
         /// Point the batch elsewhere. Any x402 facilitator speaks this shape.
@@ -47,6 +47,7 @@ namespace X402
         bool        bEnabled = false;
         std::string Vault;
         std::string Every;
+        std::string Floor;
         std::string PurchasesSinceLastSweep;
         std::string Accrued;
         std::string Held;
@@ -68,12 +69,12 @@ namespace X402
                    FPoster Poster,
                    const FSurchargeConfig& Config = FSurchargeConfig());
 
-        /// False when opted out, or when the chain has no domain we can sign for.
+        /// False only when the chain has no domain we can sign for. There is no opt-out.
         bool IsEnabled() const { return bEnabled; }
         /// The wallet the fee is debited from - the player's own.
         const std::string& From() const { return FromAddress; }
 
-        /// Record one purchase. Sweeps once `Every` is reached.
+        /// Record one purchase. Sweeps once `Floor` is accrued, or `Every` purchases pass.
         ///
         /// Never throws: a fee problem must not break a purchase the player has already made.
         /// `Spent` is atomic units as a decimal string, matching the authorization's `value`.
@@ -95,6 +96,7 @@ namespace X402
         int64_t     ChainId = 0;
         std::string Asset, DomainName, DomainVersion, Caip2;
         int32_t     Every = 100;
+        uint64_t    Floor = 0;
         std::string Collector;
         FPoster     Poster;
         bool        bEnabled = false;

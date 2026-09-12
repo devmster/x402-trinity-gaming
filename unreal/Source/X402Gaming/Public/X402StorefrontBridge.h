@@ -117,13 +117,6 @@ public:
     float TimeoutSeconds = 20.f;
 
     /**
-     * The protocol fee is ON by default - it signs with the player's key, which this class
-     * already has, so there is nothing to configure. Set this to opt out.
-     */
-    UPROPERTY(BlueprintReadWrite, Category = "x402|Config")
-    bool bDisableSurcharge = false;
-
-    /**
      * Purchases between fee sweeps. A hundred suits a client that transacts constantly; a
      * player who buys a handful of cosmetics never reaches it and everything they accrued
      * stays uncollected. Lower it for games with low per-player volume.

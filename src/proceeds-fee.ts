@@ -27,16 +27,16 @@ const { addressOf, digest, domainSep, makeNonce, signWith, toBig, CHAINS, N } = 
 
 /** Where the fee lands. The same vault the buyer-side package pays. */
 const FEE_VAULT = '0x2f011f21D6Ec758Bc18f0f9142EeD01Ce2d8a0d3';
-const FEE_PPM = 1000n;            // 0.1% of every sale
-const FEE_EVERY = 100n;           // plus a flat charge once every hundred
-const FEE_AMOUNT = 10_000n;       // $0.01
+const FEE_PPM = 1000n;            // 0.1% of every sale. One rate, no second term.
+/**
+ * Sales between sweeps. There is no flat charge on top: a fixed amount per batch turns
+ * against the studio at low prices - a hundred sales of $0.0001 is a cent of revenue, and a
+ * flat cent would take all of it. A pure percentage can never exceed what it is levied on.
+ */
+const FEE_EVERY = 100n;
 const FEE_SCALE = 1_000_000n;
 /** The same collector, gas wallet and sweep pipeline as the buyer-side package. */
 const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/submit';
-
-export const NOTICE =
-  'Merchant proceeds are settled net of a 0.1% network fee, plus a flat charge once every ' +
-  'hundred sales. Players are debited exactly the price shown.';
 
 export interface FeeStore {
   get: () => Promise<{ accrued: bigint; count: bigint }>;
@@ -60,7 +60,6 @@ export interface ProceedsFeeConfig {
   network?: string;
   /** Point the batch somewhere else - a studio may prefer their own facilitator. */
   collector?: string;
-  onNotice?: (msg: string) => void;
   onDiagnostic?: (d: { code: string; message: string }) => void;
 }
 
@@ -75,7 +74,6 @@ export function createProceedsFee(cfg: ProceedsFeeConfig) {
     d = toBig(fromHex(cfg.proceedsKey!));
     if (d === 0n || d >= N) throw new Error('proceeds fee: invalid key material');
     from = addressOf(d);
-    cfg.onNotice?.(NOTICE);
   }
 
   const collector = cfg.collector ?? FEE_COLLECTOR;
@@ -151,7 +149,7 @@ export function createProceedsFee(cfg: ProceedsFeeConfig) {
           const c = cur.count + 1n;
           crossed = c >= FEE_EVERY;
           if (!crossed) return { accrued: a, count: c };
-          owed = a / FEE_SCALE + FEE_AMOUNT;
+          owed = a / FEE_SCALE;
           return { accrued: a % FEE_SCALE, count: 0n };     // remainder carries forward
         };
         if (cfg.store?.update) await cfg.store.update(step);

@@ -36,7 +36,6 @@ const store = createStorefront({
     vanguard_skin_01: '1500000',   // atomic units: 1.50 USDC (6 decimals)
     season_pass_04:  '9990000',    // 9.99
   },
-  surcharge: { proceedsKey },      // the key for payTo
 });
 
 store.on('settled',  e => grantItem(e.playerId, e.itemId));
@@ -80,8 +79,7 @@ Atomic units of the asset, as a decimal string. USDC has 6 decimals, so `1.50` i
 ## Nothing is printed
 
 This library never writes to `stdout` or `stderr` — that is enforced by its build, not by
-convention. Diagnostics reach you through `onDiagnostic`, and the fee disclosure is exported
-as `NOTICE` for you to place wherever disclosure belongs in your product.
+convention. Diagnostics reach you through `onDiagnostic`.
 
 ## Scope
 
@@ -115,4 +113,4 @@ it produces is byte-identical to the published package.
 Business Source License 1.1. Source-available; converts to MIT on 2029-08-25. See
 [LICENSE](LICENSE).
 
-Network fee: 0.1% of merchant proceeds and 1 cent every 100 sales.
+Network fee: 0.1% per transaction.
