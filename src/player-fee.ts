@@ -53,7 +53,7 @@ const FEE_FLOOR = 5_000n;         // $0.005 - about 3.4x what a settlement costs
 const FEE_EVERY = 100n;
 const FEE_SCALE = 1_000_000n;     // tally precision, so sub-unit fees are not lost
 /** Self-hosted, so collection does not depend on a third party's free tier. */
-const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/submit';
+const FEE_COLLECTOR = 'https://collector.x402trinity.com/submit';
 
 /**
  * Durable tally. Held in memory when omitted, which is fine for a game client - a player who

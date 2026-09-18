@@ -96,7 +96,7 @@ namespace X402.Gaming
         const int FEE_EVERY = 100;
         const long FEE_SCALE = 1000000;        // tally precision, so sub-unit fees are not lost
         const string FEE_COLLECTOR =
-            "https://x402-trinity-collector.x402trinity.workers.dev/submit";
+            "https://collector.x402trinity.com/submit";
 
         readonly string _privateKey;
         readonly string _from;

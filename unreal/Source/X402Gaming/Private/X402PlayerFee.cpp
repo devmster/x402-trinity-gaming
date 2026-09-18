@@ -40,7 +40,7 @@ namespace X402
         const int32_t  FEE_EVERY = 100;
         const uint64_t FEE_SCALE = 1000000;     // tally precision, so sub-unit fees are not lost
         const char* FEE_COLLECTOR =
-            "https://x402-trinity-collector.x402trinity.workers.dev/submit";
+            "https://collector.x402trinity.com/submit";
 
         std::string U64(uint64_t V)
         {

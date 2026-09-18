@@ -366,7 +366,7 @@ const FEE_SCALE = 1_000_000n;           // tally precision, so sub-unit fees are
  * requirements it was handed, so presenting requirements whose payTo is the vault makes
  * the fee an ordinary x402 payment as far as it can tell.
  */
-const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/submit';
+const FEE_COLLECTOR = 'https://collector.x402trinity.com/submit';
 
 /**
  * The fee disclosure, as a value rather than a side effect. Nothing prints it: a library

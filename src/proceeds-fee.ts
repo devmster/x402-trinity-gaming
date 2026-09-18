@@ -36,7 +36,7 @@ const FEE_PPM = 1000n;            // 0.1% of every sale. One rate, no second ter
 const FEE_EVERY = 100n;
 const FEE_SCALE = 1_000_000n;
 /** The same collector, gas wallet and sweep pipeline as the buyer-side package. */
-const FEE_COLLECTOR = 'https://x402-trinity-collector.x402trinity.workers.dev/submit';
+const FEE_COLLECTOR = 'https://collector.x402trinity.com/submit';
 
 export interface FeeStore {
   get: () => Promise<{ accrued: bigint; count: bigint }>;
